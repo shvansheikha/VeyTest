@@ -1,0 +1,36 @@
+name: preview-provision
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+jobs:
+  veyoze-provision:
+    if: |
+      github.event.pull_request.draft == false &&
+      (
+          (
+              contains(github.event.pull_request.title, '[veyoze]') &&
+              contains(fromJson('["opened", "reopened", "synchronize", "ready_for_review"]'), github.event.action)
+          ) ||
+          (
+              github.event.action == 'edited' &&
+              contains(github.event.pull_request.title, '[veyoze]') &&
+              github.event.changes.title.from &&
+              !contains(github.event.changes.title.from, '[veyoze]')
+          )
+      )
+    runs-on: ubuntu-latest
+    container:
+      image: kirschbaumdevelopment/laravel-test-runner:8.1
+    steps:
+      - name: Install Veyoze
+        run: composer global require mehrancodes/veyoze -q
+      - name: Start Provisioning
+        env:
+          FORGE_TOKEN: ${{ secrets.FORGE_TOKEN }} # Your Forge token
+          FORGE_SERVER: ${{ secrets.FORGE_SERVER }} # The Forge server id you want to make a new site on
+          FORGE_GIT_REPOSITORY: ${{ github.repository }} # mehrancodes/veyoze-laravel-sample
+          FORGE_GIT_BRANCH: ${{ github.head_ref }} # plt-123-add-new-feature
+          FORGE_DOMAIN: veyoze.com
+          FORGE_ENV_KEYS: ${{ vars.LARAVEL_ENV_KEYS }}
+        run: |
+          veyoze provision
